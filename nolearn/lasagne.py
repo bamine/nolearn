@@ -20,6 +20,7 @@ from sklearn.cross_validation import StratifiedKFold
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import mean_squared_error
 from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import StandardScaler
 import theano
 from theano import tensor as T
 
@@ -81,6 +82,7 @@ class NeuralNet(BaseEstimator):
         X_tensor_type=None,
         y_tensor_type=None,
         use_label_encoder=False,
+        normalize_input = True,
         on_epoch_finished=(),
         on_training_finished=(),
         more_params=None,
@@ -121,6 +123,7 @@ class NeuralNet(BaseEstimator):
         self.on_training_finished = on_training_finished
         self.more_params = more_params or {}
         self.verbose = verbose
+        self.normalize_input = normalize_input
 
         for key in kwargs.keys():
             assert not hasattr(self, key)
@@ -271,6 +274,11 @@ class NeuralNet(BaseEstimator):
     def train_loop(self, X, y):
         X_train, X_valid, y_train, y_valid = self.train_test_split(
             X, y, self.eval_size)
+
+        if self.normalize_input:
+            scaler = StandardScaler()
+            X_train = scaler.fit_transform(X_train)
+            X_valid = scaler.transform(X_valid)
 
         on_epoch_finished = self.on_epoch_finished
         if not isinstance(on_epoch_finished, (list, tuple)):
