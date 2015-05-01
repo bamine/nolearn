@@ -30,6 +30,7 @@ class _list(list):
 
 
 class _dict(dict):
+
     def __contains__(self, key):
         return True
 
@@ -41,6 +42,7 @@ class ansi:
 
 
 class BatchIterator(object):
+
     def __init__(self, batch_size):
         self.batch_size = batch_size
 
@@ -65,8 +67,10 @@ class BatchIterator(object):
 
 
 class NeuralNet(BaseEstimator):
+
     """A scikit-learn estimator based on Lasagne.
     """
+
     def __init__(
         self,
         layers,
@@ -79,16 +83,17 @@ class NeuralNet(BaseEstimator):
         regression=False,
         max_epochs=100,
         eval_size=0.2,
+        validation_set=None,
         X_tensor_type=None,
         y_tensor_type=None,
         use_label_encoder=False,
-        normalize_input = True,
+        normalize_input=True,
         on_epoch_finished=(),
         on_training_finished=(),
         more_params=None,
         verbose=0,
         **kwargs
-        ):
+    ):
         if loss is not None:
             raise ValueError(
                 "The 'loss' parameter was removed, please use "
@@ -102,7 +107,7 @@ class NeuralNet(BaseEstimator):
                 2: T.matrix,
                 3: T.tensor3,
                 4: T.tensor4,
-                }
+            }
             X_tensor_type = types[len(kwargs['input_shape'])]
         if y_tensor_type is None:
             y_tensor_type = T.fmatrix if regression else T.ivector
@@ -124,6 +129,7 @@ class NeuralNet(BaseEstimator):
         self.more_params = more_params or {}
         self.verbose = verbose
         self.normalize_input = normalize_input
+        self.validation_set = validation_set
 
         for key in kwargs.keys():
             assert not hasattr(self, key)
@@ -137,7 +143,7 @@ class NeuralNet(BaseEstimator):
             raise ValueError(
                 "The 'batch_iterator' argument has been replaced. "
                 "Use 'batch_iterator_train' and 'batch_iterator_test' instead."
-                )
+            )
 
     def _check_for_unused_kwargs(self):
         names = [n for n, _ in self.layers] + ['update', 'objective']
@@ -163,7 +169,7 @@ class NeuralNet(BaseEstimator):
             self.layers_, self.objective, self.update,
             self.X_tensor_type,
             self.y_tensor_type,
-            )
+        )
         self.train_iter_, self.eval_iter_, self.predict_iter_ = iter_funcs
         self._initialized = True
 
@@ -238,23 +244,23 @@ class NeuralNet(BaseEstimator):
             givens={
                 X: X_batch,
                 y: y_batch,
-                },
-            )
+            },
+        )
         eval_iter = theano.function(
             inputs=[theano.Param(X_batch), theano.Param(y_batch)],
             outputs=[loss_eval, accuracy],
             givens={
                 X: X_batch,
                 y: y_batch,
-                },
-            )
+            },
+        )
         predict_iter = theano.function(
             inputs=[theano.Param(X_batch)],
             outputs=predict_proba,
             givens={
                 X: X_batch,
-                },
-            )
+            },
+        )
 
         return train_iter, eval_iter, predict_iter
 
@@ -272,8 +278,12 @@ class NeuralNet(BaseEstimator):
         return self
 
     def train_loop(self, X, y):
-        X_train, X_valid, y_train, y_valid = self.train_test_split(
-            X, y, self.eval_size)
+        if self.validation_set is None:
+            X_train, X_valid, y_train, y_valid = self.train_test_split(
+                X, y, self.eval_size)
+        else:
+            X_train, y_train = X, y
+            X_valid, y_valid = self.validation_set
 
         if self.normalize_input:
             scaler = StandardScaler()
@@ -342,14 +352,14 @@ class NeuralNet(BaseEstimator):
                           "{:.2f}%".format(avg_valid_accuracy * 100)
                           if not self.regression else "",
                           time() - t0,
-                          ))
+                      ))
 
             info = dict(
                 epoch=epoch,
                 train_loss=avg_train_loss,
                 valid_loss=avg_valid_loss,
                 valid_accuracy=avg_valid_accuracy,
-                )
+            )
             self.train_history_.append(info)
             try:
                 for func in on_epoch_finished:
@@ -432,7 +442,7 @@ class NeuralNet(BaseEstimator):
             'eval_iter_',
             'predict_iter_',
             '_initialized',
-            ):
+        ):
             if attr in state:
                 del state[attr]
         return state
@@ -448,7 +458,7 @@ class NeuralNet(BaseEstimator):
                 layer.name,
                 str(output_shape),
                 str(functools.reduce(operator.mul, output_shape[1:])),
-                ))
+            ))
 
     def get_params(self, deep=True):
         params = super(NeuralNet, self).get_params(deep=deep)
