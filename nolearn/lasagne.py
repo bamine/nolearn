@@ -286,9 +286,9 @@ class NeuralNet(BaseEstimator):
             X_valid, y_valid = self.validation_set
 
         if self.normalize_input:
-            scaler = StandardScaler()
-            X_train = scaler.fit_transform(X_train)
-            X_valid = scaler.transform(X_valid)
+            self.scaler = StandardScaler()
+            X_train = self.scaler.fit_transform(X_train)
+            X_valid = self.scaler.transform(X_valid)
 
         on_epoch_finished = self.on_epoch_finished
         if not isinstance(on_epoch_finished, (list, tuple)):
@@ -370,7 +370,9 @@ class NeuralNet(BaseEstimator):
         for func in on_training_finished:
             func(self, self.train_history_)
 
-    def predict_proba(self, X):
+    def predict_proba(self, X, normalize_input=True):
+        if normalize_input:
+            X = self.scaler.transform(X)
         probas = []
         for Xb, yb in self.batch_iterator_test(X):
             probas.append(self.predict_iter_(Xb))
