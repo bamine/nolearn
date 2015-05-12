@@ -392,7 +392,9 @@ class NeuralNet(BaseEstimator):
         return float(score(self.predict(X), y))
 
     def train_test_split(self, X, y, eval_size):
-        if eval_size:
+        if eval_size is None:
+            X_train, X_valid, y_train, y_valid = X, X, y, y
+        elif eval_size:
             if self.regression:
                 kf = KFold(y.shape[0], round(1. / eval_size))
             else:
